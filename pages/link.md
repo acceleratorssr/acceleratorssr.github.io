@@ -1,4 +1,4 @@
----
+<!-- ---
 layout: page
 title: Links
 tagline: My friends.
@@ -24,4 +24,4 @@ permalink: /links.html
   <div id="comments"></div>
   {% include comments.html %}
   {% endif %}
-  {% include scripts.html %}
+  {% include scripts.html %} -->
