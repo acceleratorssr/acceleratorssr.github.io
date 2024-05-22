@@ -1,27 +1,16 @@
 ---
 layout: page
 title: about
-tagline: 关于我 ~
+tagline: wwww
 sitetime: display
 permalink: /about.html
 ---
 
-## #作者
+## 联系方式
 
-你可以通过以下方式联系作者
+WeChat: freedomAhah
 
-QQ: 1316341442
+Email: 3396134815@qq.com
 
-Email: <a href="mailto:lk@atlinker.cn">lk@atlinker.cn</a>
+Github: [accelerator](https://github.com/acceleratorssr)
 
-Github: [link9596](https://github.com/link9596)
-
-## #赞赏
-
-本主题使用免费，也是作者长期工作的结晶，如果你喜欢主题\~想支持作者，欢迎请我喝杯奶茶！~
-
-<center>扫下方付款二维码即可向作者赞赏!</center>
-
-![wechat](https://atlinker.cn/pay/wechat.png)
-
-![pay](https://atlinker.cn/pay/apay.png)
