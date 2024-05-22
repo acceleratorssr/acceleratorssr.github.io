@@ -1,15 +1,24 @@
-title: Link #博客标题
-description: Just 4 Fun. #博客描述
-keywords: blog,css,html,php #博客关键字
-author: "Link"
+title: accelerator #博客标题
+description: 记录多次复习的笔记(￣～￣) #博客描述
+keywords: blog,go,mysql,redis,raft #博客关键字
+author: "accelerator"
 
-#title hide and show
-hide: (つェ⊂)我藏好啦
-show: ´∇｀ 呀被发现啦~ 
+hide: (￣。￣)
+show: ( ・_・)
+# ( ・_・)
+# (￣｡￣)
+# (￣～￣；)
+# (・・。)
+# (¬_¬)
+# (－_－) zzZ
+# (￣ρ￣)..zzZZ
+# (｡ŏ_ŏ)
+# (－ω－)
+# (^･_･^)
 
 baseurl: "" # change this to the subpath of your site, e.g. /blog. Leave it empty if in root.
 url: "" # change this to the base hostname & protocol for your site
-buildtime: "1514736000" #博客建立时的时间戳 可进入https://tool.lu/timestamp/将博客建立时的日期转换成时间戳
+buildtime: "1716343275" #博客建立时的时间戳 可进入https://tool.lu/timestamp/将博客建立时的日期转换成时间戳
            #The timestamp at the time of blog establishment can be entered at https://tool.lu/timestamp/to convert the date at the time of blog establishment into a timestamp.
 
 PJAX: true #启用PJAX，会与评论系统冲突（如不用评论系统建议开启）
@@ -17,7 +26,7 @@ PJAX: true #启用PJAX，会与评论系统冲突（如不用评论系统建议�
 paginate: 8 #同时显示的最大文章数，超过自动分页
 paginate_path: "page:num"
 
-background: https://api.dujin.org/bing/1920.php
+background: ./image/sherry.jpg
 theme_color: 546E7A
 
 # hydrogen-blog date format
