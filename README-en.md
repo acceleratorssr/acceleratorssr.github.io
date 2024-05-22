@@ -1,4 +1,4 @@
-# Hydrogen
+<!-- # Hydrogen
 Lightweight and clean
 
 Follow her footsteps and start your blog journey.
@@ -104,4 +104,4 @@ Finally, if you like it, please give me a star:wink: (thank you!!.
 ![hydrogen](/theme/author.svg)
 
 ![](https://img.shields.io/github/repo-size/link9596/hydrogen?color=%23F8BBD0)
-![](https://img.shields.io/github/release/link9596/hydrogen?color=%235C6BC0&label=Version)
+![](https://img.shields.io/github/release/link9596/hydrogen?color=%235C6BC0&label=Version) -->
