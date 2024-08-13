@@ -17,7 +17,7 @@ tagline: 标签
     }
   </style>
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    window.onload = function () {
       var tagTitles = document.querySelectorAll(".tag-title");
       tagTitles.forEach(function (tagTitle) {
         tagTitle.addEventListener("click", function () {
@@ -29,7 +29,7 @@ tagline: 标签
           }
         });
       });
-    });
+    };
   </script>
 </head>
 
