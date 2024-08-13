@@ -16,7 +16,7 @@ tagline: 标签
       display: none;
     }
   </style>
-  <script>
+  <!-- <script>
     window.onload = function () {
       var tagTitles = document.querySelectorAll(".tag-title");
       tagTitles.forEach(function (tagTitle) {
@@ -30,8 +30,26 @@ tagline: 标签
         });
       });
     };
-  </script>
+  </script> -->
 </head>
+
+<body>
+  <!-- Your content here -->
+  <script>
+    var tagTitles = document.querySelectorAll(".tag-title");
+    tagTitles.forEach(function (tagTitle) {
+      tagTitle.addEventListener("click", function () {
+        var taggedPosts = tagTitle.nextElementSibling;
+        if (taggedPosts.style.display === "none" || taggedPosts.style.display === "") {
+          taggedPosts.style.display = "block";
+        } else {
+          taggedPosts.style.display = "none";
+        }
+      });
+    });
+  </script>
+</body>
+
 
 <article>
 
