@@ -1,5 +1,5 @@
 title: accelerator #博客标题
-description: 记录部分笔记 #博客描述
+description: 从tags页面分类查看文章也许更直观点! #博客描述
 keywords: blog,go,mysql,redis,raft #博客关键字
 author: "accelerator"
 
