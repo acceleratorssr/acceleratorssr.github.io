@@ -256,3 +256,10 @@ type Plugin interface {
 db.Use(NewCallbacks())
 ```
 
+注：
+Row: 专注于单行查询的操作，适用于期望获取一条记录的场景；
+Query: 通用的查询操作，适用于单行或多行的查询；
+
+参考资料：
+https://gorm.io/zh_CN/docs/write_plugins.html
+
