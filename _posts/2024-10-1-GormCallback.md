@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Gorm callback相关细节
-tags: go
+tags: 源码相关
 excerpt: 
 ---
 
@@ -147,9 +147,12 @@ func sortCallbacks(cs []*callback) (fns []func(*DB), err error) {
 	return
 }
 ```
+<br>
 
 #### sortCallbacks中的核心排序方法:
 **注意：实际上并没有区分 before 和 after，因为这只是处理所有回调的注册和排序；**
+
+**实际的 SQL 执行也是利用 callbacks 机制执行的（在 callbacks 包内）；**
 ```go
 // names内含所有 存活 回调函数
 for _, c := range cs {
@@ -228,6 +231,7 @@ sortCallback = func(c *callback) error {
 在执行主操作之前（after 同理），GORM 会检查并执行与该操作相关的 before 回调：
 - 查找回调: GORM 会从处理器（processor）的回调列表（callbacks）中查找所有注册的 before 回调；
 - 执行回调: 按照注册顺序依次调用这些回调函数；
+
 执行链路（以first为例）：
 
 ```go
