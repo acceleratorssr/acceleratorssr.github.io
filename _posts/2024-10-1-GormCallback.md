@@ -2,7 +2,7 @@
 layout: post
 title: Gorm callback相关细节
 tags: 源码相关
-excerpt: 
+excerpt: callback
 ---
 
 > Callbacks are registered at the global *gorm.DB level, not on a session basis. This means if you need different callback behaviors, you should initialize a separate *gorm.DB instance.

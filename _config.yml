@@ -1,6 +1,6 @@
 title: accelerator #博客标题
 description: 从tags页面分类查看文章也许更直观点! #博客描述
-keywords: blog,go,mysql,redis,raft #博客关键字
+keywords: blog,go,mysql,redis,kafka,Load balancing,raft #博客关键字
 author: "accelerator"
 
 hide: (￣。￣)
@@ -23,7 +23,7 @@ buildtime: "1716343275" #博客建立时的时间戳 可进入https://tool.lu/ti
 
 PJAX: true #启用PJAX，会与评论系统冲突（如不用评论系统建议开启）
 
-paginate: 8 #同时显示的最大文章数，超过自动分页
+paginate: 16 #同时显示的最大文章数，超过自动分页
 paginate_path: "page:num"
 
 background: ./image/sherry.jpg
