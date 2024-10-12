@@ -1,5 +1,5 @@
 title: accelerator #博客标题
-description: 从tags页面分类查看文章也许更直观点! #博客描述
+description: 从tags页面分类查看文章也许更直观点! 刷新一下可解决渲染问题 #博客描述
 keywords: blog,go,mysql,redis,kafka,Load balancing,raft #博客关键字
 author: "accelerator"
 
