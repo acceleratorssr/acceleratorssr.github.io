@@ -13,6 +13,7 @@ excerpt: 解决单个进程内的高并发请求问题;
 **eg**:
 输出：
 `1 2 3 4 No panic 5 i am here`
+
 `fatal error: no goroutines (main called runtime.Goexit) - deadlock!`
 ```go
 func main() {
@@ -44,7 +45,6 @@ func main() {
 	}()
 	runtime.Goexit()
 }
-
 ```
 
 # 正餐
