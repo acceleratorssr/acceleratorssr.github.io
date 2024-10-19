@@ -3,7 +3,10 @@ layout: post
 title: 基于grpc的服务发现及相关核心组件、交互分析
 tags: 源码相关
 excerpt: resovler.Resolver ...
+stickie: true
 ---
+
+> 基于v1.64.0；
 
 # 服务发现
 
@@ -47,7 +50,7 @@ type ClientConn interface {
 	// 解析服务地址时遇到的错误，回调给 ClientConn
 	ReportError(error)
 
-    // 弃用
+	// 弃用
 	NewAddress(addresses []Address)
 	// 解析json格式的grpc服务配置
 	ParseServiceConfig(serviceConfigJSON string) *serviceconfig.ParseResult
@@ -60,32 +63,32 @@ type Address struct {
 	Attributes *attributes.Attributes
 	BalancerAttributes *attributes.Attributes
 
-    // 弃用：改用Attributes
+	// 弃用：改用Attributes
 	Metadata any
 }
 
 // 用于创建一个 resolver
 type Builder interface {
 	// ClientConn 会接收 Resolver 返回的地址更新
-    // 调用时机：
-    // 初次建立连接
-    // 客户端重新连接：连接中断时，gRPC 客户端会调用 ResolveNow 尝试重新解析
-    // resolver.Resolver.ResolveNow() 手动触发解析过程
-    // 此处可开启单独的 goroutine，进行 list-watcher 逻辑
+	// 调用时机：
+	// 初次建立连接
+	// 客户端重新连接：连接中断时，gRPC 客户端会调用 ResolveNow 尝试重新解析
+	// resolver.Resolver.ResolveNow() 手动触发解析过程
+	// 此处可开启单独的 goroutine，进行 list-watcher 逻辑
 	Build(target Target, cc ClientConn, opts BuildOptions) (Resolver, error)
-    // 解析出使用的协议类型，如 etcd等
+	// 解析出使用的协议类型，如 etcd等
 	Scheme() string
 }
 
 // watcher
 type Resolver interface {
-    // 连接出现异常时，调用该方法重新实现一次服务发现
+	// 连接出现异常时，调用该方法重新实现一次服务发现
 	ResolveNow(ResolveNowOptions)
 	Close()
 }
 
 type Target struct {
-	URL url.URL
+	URL url.URL // 内含 scheme 等信息
 }
 ```
 
@@ -99,21 +102,21 @@ func NewClient(target string, opts ...DialOption) (conn *ClientConn, err error) 
 
 	... // 全局的选型初始化
 
-    // 应用传入的 opt
+	// 应用传入的 opt
 	for _, opt := range opts {
 		opt.apply(&cc.dopts)
 	}
 
-    // 链式应用客户端拦截器，此处分为一元和流式两种
+	// 链式应用客户端拦截器，此处分为一元和流式两种
 	chainUnaryClientInterceptors(cc)
 	chainStreamClientInterceptors(cc)
 
-    // 验证TLS
+	// 验证TLS
 	if err := cc.validateTransportCredentials(); err != nil {
 		return nil, err
 	}
 
-    // 解析服务配置（负载均衡的配置就在这被解析出来，即获取 balancer.Builder）
+	// 解析服务配置（负载均衡的配置就在这被解析出来，即获取 balancer.Builder）
 	if cc.dopts.defaultServiceConfigRawJSON != nil {
 		scpr := parseServiceConfig(*cc.dopts.defaultServiceConfigRawJSON)
 		if scpr.Err != nil {
@@ -124,7 +127,7 @@ func NewClient(target string, opts ...DialOption) (conn *ClientConn, err error) 
 	cc.mkp = cc.dopts.copts.KeepaliveParams
 
 	// 将 ClientConn 注册到 channelz 里
-    // 用于监控连接和通道状态
+	// 用于监控连接和通道状态
 	cc.channelzRegistration(target)
 
 	// 解析目标及寻找解析器
@@ -132,6 +135,7 @@ func NewClient(target string, opts ...DialOption) (conn *ClientConn, err error) 
 		channelz.RemoveEntry(cc.channelz.ID)
 		return nil, err
 	}
+
 /* ------------------------------------------------------------------------
 注：在自定义 resolver 的情况下，进入 parseTargetAndFindResolver 后，只需要先解析出
 target 的 scheme，又因为当初注册 resovler 的 builder 时，使用的 key 是自定义的 scheme，
@@ -140,19 +144,20 @@ target 的 scheme，又因为当初注册 resovler 的 builder 时，使用的 k
 parseTargetAndFindResolver 的后部分是在没有通过 scheme 找到对应 resolver，或者
 没有 scheme 的情况下，使用默认的直连模式；
 ------------------------------------------------------------------------ */
-    // TLS相关
+
+	// TLS相关
 	if err = cc.determineAuthority(); err != nil {
 		channelz.RemoveEntry(cc.channelz.ID)
 		return nil, err
 	}
 
-    // 创建 连接状态管理器
+	// 创建 连接状态管理器
 	cc.csMgr = newConnectivityStateManager(cc.ctx, cc.channelz)
-    // 创建出负载均衡器中的选择器
+	// 创建出负载均衡器中的选择器
 	cc.pickerWrapper = newPickerWrapper(cc.dopts.copts.StatsHandlers)
 
-    // 空闲连接状态
-    // 创建 resolver 和 balancer 的包装器（wrapper）
+	// 空闲连接状态
+	// 创建 resolver 和 balancer 的包装器（wrapper）
 	cc.initIdleStateLocked()
 	cc.idlenessMgr = idle.NewManager((*idler)(cc), cc.dopts.idleTimeout)
 	return cc, nil
@@ -169,35 +174,36 @@ parseTargetAndFindResolver 的后部分是在没有通过 scheme 找到对应 re
 
 &emsp;&emsp;以 `ClientConn` 为传递者，再将 **State** 传递给 `balancer wrapper`，通过 `serializer.Schedule` 安全传递到 `balancer.Balancer` 的实现里（如原本为 **baseBalaner**），并更新对应信息，如调用 `NewSubConn` 构造出 **addrConn**（即真实的连接，也被 **ClientConn** 追踪管理，其负责管理多个服务节点的地址等元数据，返回时会被包装为实现 **SubConn** 接口的 **acBalancerWrapper**），拿到被 **wrapper** 后的 **addrConn**，即可调用 **SubConn** 的 `Connect` 方法建立连接；
 
+<br>
+
 发起第一次 rpc 请求（或**节点变化**）后：
 
 &emsp;&emsp;直接调用自定义的 `resolver.Builder` 的 **build** 方法，解析节点，并将更新后的节点信息传递给 **resolver wrapper** 的 `UpdateState` 方法，后面的流程和上述步骤相同了，最后都是到 **baseBalaner** 内更新连接等信息；
 
 &emsp;&emsp;而 HTTP2.0 长连接也都是通过 **ClientConn**（通过 **balancer wrapper** 传递） 的 `newAddrConnLocked` 方法建立的（初始连接都为 idle状态），并将连接信息传递回 baseBalaner，拿到连接信息后，先通过拿到的 balancer.SubConn 建立连接（Connect），再去更新负载均衡器的选择器（build）；
 
-&emsp;&emsp;如果光看调用流程，初见可能有点晕，但仔细分析也不算复杂，个人认为可以先从几个核心结构体的关系开始入手，本质上其实就分为连接模块、负载均衡模块、解析模块，gRPC 为了简化模块间的传输操作，将 balancer 和 resolver 均使用装饰器模式包装了一层，并都额外实现了 clientconn 接口，通过这个接口，负载均衡器和解析器的通讯就主要是依赖 UpdateState(State) 方法传递元数据的（注：State 包含的数据见下方引用部分），个人认为可以从韦恩图一眼看出他们的关系（跳过 builder 的关系）：
+&emsp;&emsp;如果光看调用流程，初见可能有点晕，但仔细分析也不算复杂，个人认为可以先从几个核心结构体的关系开始入手，本质上其实就分为**连接模块**、**负载均衡模块**、**解析模块**，gRPC 为了简化模块间的传输操作，将 **balancer** 和 **resolver** 均使用**装饰器模式**（wrapper）包装了一层，并都额外实现了 **clientconn** 接口，通过这个接口，负载均衡器和解析器的通讯就主要是依赖 `UpdateState(State)` 方法传递元数据的（注：State 包含的数据见下方引用部分），个人认为可以从韦恩图一眼看出他们的关系（跳过 builder 的关系）：
 
 <p><img src="https://acceleratorssr.github.io/image/call.png" alt="核心结构的关系"></p>
 
-故上方源码调用链就容易理解点了，核心目标就是两个方向的 数据传递：
+故上方源码调用链就容易理解点了，核心目标就是**两个**方向的 数据传递：
 - **事件**： resolver 解析到服务节点发生变化；**目标**：通知 balancer 重新维护连接状态；
 - **事件**：需要获取 RPC 请求的目标地址；**目标**：picker 的最新信息会同步到 ClientConn，并由 ClientConn 获取连接信息，通过 transport 发起真实的 rpc 请求；
 
-> Balancer 传递的 State 包含两个字段，分别是：标识负载均衡器的连接状态，选择器的实现（由ClientConn 用于选择连接进行 rpc 调用）；
+> &emsp;&emsp;Balancer 传递的 State 包含两个字段，分别是：标识负载均衡器的连接状态，选择器的实现（由ClientConn 用于选择连接进行 rpc 调用）；
 >
-> Resolver 传递的 State 包含四个字段，目前分别是：addresses 解析出的地址切片，endpoints服务节点的信息切片，服务器的配置信息，和 attributes 额外信息；
-> 
-> 官方表明要用 endpoints 替换掉此处的 addresses ，虽然观察 resolver wrapper 处的源码可以发现当其传递信息到 ClientConn 时，endpoints 为空时会获取一份 addresses 副本，但起码目前1.64.0的版本下，官方给的默认 balancer.Balancer 实现 baseBalancer 中，依然使用 addresses 建立连接等操作，并没有使用 endpoints；（也可能在其他地方使用，但至少通过 ClientConn 传递建立连接的数据时就只用了 addresses）
+> &emsp;&emsp;Resolver 传递的 State 包含四个字段，目前分别是：addresses 解析出的地址切片，endpoints 服务节点的信息切片，服务器的配置信息，和 attributes 额外信息；
+> &emsp;&emsp;官方表明要用 endpoints 替换掉此处的 addresses ，虽然观察 resolver wrapper 处的源码可以发现当其传递信息到 ClientConn 时，endpoints 为空时会获取一份 addresses 副本，但起码目前 `1.64.0` 的版本下，官方给的默认 balancer.Balancer 实现 baseBalancer 中，依然使用 addresses 建立连接等操作，并没有使用 endpoints；（也可能在其他地方使用，但至少通过 ClientConn 传递建立连接的数据时就只用了 addresses）
 
 ### 传递服务节点元数据及构建核心结构
 
-（初始化解析器）`获取可用服务节点` 并 通`知上游及负载均衡器` 的调用链路流程图（省去处理数据）（**核心中的核心**）：
+（初始化解析器）`获取可用服务节点` 并 `通知上游及负载均衡器` 的调用链路流程图（省去处理数据）（**核心中的核心**）：
 
 <p><img src="https://acceleratorssr.github.io/image/key.png" alt="核心变更节点的流程"></p>
 
 > CallbackSerializer 结构体：提供同步方式调度回调函数，保证顺序即线性化，以FIFO执行任务；
 > 
-> 如在此处使用的 Schedule 方法 就是将传入的方法放入缓冲区，并允许调度；
+> 如 在此处使用的 Schedule 方法，就是将传入的方法放入缓冲区，并允许调度；
 > 
 > 内部开启的 goroutine 会一直处理回调函数；
 
@@ -205,9 +211,9 @@ parseTargetAndFindResolver 的后部分是在没有通过 scheme 找到对应 re
 
 &emsp;&emsp;发起调用的流程（体现上文的关系，即 ClientConn 会从 picker 取出 SubConn 并建立连接）：
 
-&emsp;&emsp;由 ClientConn 调用 Invoke（起点），再调用 grpc 包下的 invoke 方法，初始化相关参数，调用 newClientStream 方法实例化一个新的客户端流，设置相关请求信息，再到 clientSteam 的 newAttemptLocked 方法尝试发起调用；
+&emsp;&emsp;由 **ClientConn** 调用 `Invoke`（起点），再调用 grpc 包下的 `invoke` 方法，初始化相关参数，调用 `newClientStream` 方法实例化一个新的客户端流，设置相关请求信息，再到 **clientSteam** 的 `newAttemptLocked` 方法尝试发起调用；
 
-&emsp;&emsp;再进入 csAttempt 的 getTransport 方法，调用 ClientConn 的 getTransport 方法，拿到 picker wrapper，从而可以调用自定义实现的 pick，拿到 SubConn 后，返回 csAttempt 处调用 newStream 方法创建实际的 RPC 流，最后通过 clientSteam 的 sendMsg 和 RecvMsg 即可发送请求并接收响应；
+&emsp;&emsp;再进入 **csAttempt** 的 `getTransport` 方法，调用 **ClientConn** 的 `getTransport` 方法，拿到 **picker wrapper**，从而可以调用自定义实现的 **pick**，拿到 **SubConn** 后，返回 **csAttempt** 处调用 `newStream` 方法创建实际的 RPC 流，最后通过 **clientSteam** 的 `sendMsg` 和 `RecvMsg` 即可发送请求并接收响应；
 
 ### 相关包
 
