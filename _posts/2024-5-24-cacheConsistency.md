@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 数据一致性
-tags: 数据一致性
+tags: 技术沉淀
 excerpt: 聊聊概念
 ---
 
