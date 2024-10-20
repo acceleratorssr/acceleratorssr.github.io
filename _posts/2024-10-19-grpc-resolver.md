@@ -50,7 +50,7 @@ type ClientConn interface {
 	// 解析服务地址时遇到的错误，回调给 ClientConn
 	ReportError(error)
 
-		// 弃用
+	// 弃用
 	NewAddress(addresses []Address)
 	// 解析json格式的grpc服务配置
 	ParseServiceConfig(serviceConfigJSON string) *serviceconfig.ParseResult
@@ -70,19 +70,19 @@ type Address struct {
 // 用于创建一个 resolver
 type Builder interface {
 	// ClientConn 会接收 Resolver 返回的地址更新
-		// 调用时机：
-		// 初次建立连接
-		// 客户端重新连接：连接中断时，gRPC 客户端会调用 ResolveNow 尝试重新解析
-		// resolver.Resolver.ResolveNow() 手动触发解析过程
-		// 此处可开启单独的 goroutine，进行 list-watcher 逻辑
+	// 调用时机：
+	// 初次建立连接
+	// 客户端重新连接：连接中断时，gRPC 客户端会调用 ResolveNow 尝试重新解析
+	// resolver.Resolver.ResolveNow() 手动触发解析过程
+	// 此处可开启单独的 goroutine，进行 list-watcher 逻辑
 	Build(target Target, cc ClientConn, opts BuildOptions) (Resolver, error)
-		// 解析出使用的协议类型，如 etcd等
+	// 解析出使用的协议类型，如 etcd等
 	Scheme() string
 }
 
 // watcher
 type Resolver interface {
-		// 连接出现异常时，调用该方法重新实现一次服务发现
+	// 连接出现异常时，调用该方法重新实现一次服务发现
 	ResolveNow(ResolveNowOptions)
 	Close()
 }
@@ -111,12 +111,12 @@ func NewClient(target string, opts ...DialOption) (conn *ClientConn, err error) 
 	chainUnaryClientInterceptors(cc)
 	chainStreamClientInterceptors(cc)
 
-		// 验证TLS
+	// 验证TLS
 	if err := cc.validateTransportCredentials(); err != nil {
 		return nil, err
 	}
 
-		// 解析服务配置（负载均衡的配置就在这被解析出来，即获取 balancer.Builder）
+	// 解析服务配置（负载均衡的配置就在这被解析出来，即获取 balancer.Builder）
 	if cc.dopts.defaultServiceConfigRawJSON != nil {
 		scpr := parseServiceConfig(*cc.dopts.defaultServiceConfigRawJSON)
 		if scpr.Err != nil {
@@ -145,19 +145,19 @@ parseTargetAndFindResolver 的后部分是在没有通过 scheme 找到对应 re
 没有 scheme 的情况下，使用默认的直连模式；
 ------------------------------------------------------------------------ */
 
-		// TLS相关
+	// TLS相关
 	if err = cc.determineAuthority(); err != nil {
 		channelz.RemoveEntry(cc.channelz.ID)
 		return nil, err
 	}
 
-		// 创建 连接状态管理器
+	// 创建 连接状态管理器
 	cc.csMgr = newConnectivityStateManager(cc.ctx, cc.channelz)
-		// 创建出负载均衡器中的选择器
+	// 创建出负载均衡器中的选择器
 	cc.pickerWrapper = newPickerWrapper(cc.dopts.copts.StatsHandlers)
 
-		// 空闲连接状态
-		// 创建 resolver 和 balancer 的包装器（wrapper）
+	// 空闲连接状态
+	// 创建 resolver 和 balancer 的包装器（wrapper）
 	cc.initIdleStateLocked()
 	cc.idlenessMgr = idle.NewManager((*idler)(cc), cc.dopts.idleTimeout)
 	return cc, nil
@@ -172,7 +172,7 @@ parseTargetAndFindResolver 的后部分是在没有通过 scheme 找到对应 re
 
 &emsp;&emsp;在 **build** 内调用 **resolver wrapper** 的 `UpdateState` 方法，传递 **State** 到 `ClientConn` 结构体上，
 
-&emsp;&emsp;以 `ClientConn` 为传递者，再将 **State** 传递给 `balancer wrapper`，通过 `serializer.Schedule` 安全传递到 `balancer.Balancer` 的实现里（如原本为 **baseBalaner**），并更新对应信息，如调用 `NewSubConn` 构造出 **addrConn**（即真实的连接，也被 **ClientConn** 追踪管理，其负责管理多个服务节点的地址等元数据，返回时会被包装为实现 **SubConn** 接口的 **acBalancerWrapper**），拿到被 **wrapper** 后的 **addrConn**，即可调用 **SubConn** 的 `Connect` 方法建立连接；
+&emsp;&emsp;以 `ClientConn` 为传递者，再将 **State** 传递给 `balancer wrapper`，通过 `serializer.Schedule` 安全传递到 `balancer.Balancer` 的实现里（如原本为 **baseBalaner**），并更新对应信息，如调用 `NewSubConn` 构造出 **addrConn**（即真实的连接，也被 **ClientConn** 追踪管理，其负责管理多个服务节点的地址等元数据，返回时会被包装为实现 **SubConn** 接口的 **acBalancerWrapper**），拿到被 **wrapper** 后的 **addrConn**，即可调用 **SubConn** 的 `Connect` 方法建立连接（开启goroutine，不会阻塞）；
 
 <br>
 
