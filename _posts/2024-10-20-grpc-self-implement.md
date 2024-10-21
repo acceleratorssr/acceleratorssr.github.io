@@ -21,11 +21,14 @@ func init() {
 // func newBuilder() balancer.Builder
 ```
 
-&emsp;&emsp;此时自定义的 **balancer.Builder** 将会将三个参数组装进自实现 **balancer.Balancer** 的结构体：负载均衡的**名称**（用于使用时，用json进行匹配），自定义的 **PickerBuilder** ，和是否进行和服务节点心跳检测；
+&emsp;&emsp;此时自定义的 **balancer.Builder** 将会将三个参数组装进自实现 **balancer.Balancer** 的结构体：
+负载均衡的**名称**（用于使用时，用json进行匹配），自定义的 **PickerBuilder** ，和是否进行和服务节点心跳检测；
 
-&emsp;&emsp;需要注意，**balancer.Balancer** 需要维护 **balancer.ClientConn** 等额外元数据，如 用于让 **ClientConn** 构造出 **addrConn**，并且将其封装为 **SubConn** 接口类型后，调用 `Connect` 方法建立连接；
+&emsp;&emsp;需要注意，**balancer.Balancer** 需要维护 **balancer.ClientConn** 等额外元数据，
+如 用于让 **ClientConn** 构造出 **addrConn**，并且将其封装为 **SubConn** 接口类型后，调用 `Connect` 方法建立连接；
 
-&emsp;&emsp;核心文件：`balancer\balancer.go`、`resolver_wrapper.go`、`clientconn.go`、`balancer/base/balancer.go`（主要是看流程，这部分是要被自定义替换的）、`gracefulswitch.go`；
+&emsp;&emsp;核心文件：`balancer\balancer.go`、`resolver_wrapper.go`、`clientconn.go`、`balancer/base/balancer.go`
+（主要是看流程，这部分是要被自定义替换的）、`gracefulswitch.go`；
 
 &emsp;&emsp;间接核心文件：`service_config.go`、`Config.go`；
 
@@ -35,9 +38,11 @@ func init() {
 
 &emsp;&emsp;在 `gracefulswitch` 包下：
 
-&emsp;&emsp; `func parseServiceConfig(js string) *serviceconfig.ParseResult` 解析服务配置，并将 json 转换为 结构体 `serviceconfig.ParseResult`，故在此获取了获取负载均衡的配置，
+&emsp;&emsp; `func parseServiceConfig(js string) *serviceconfig.ParseResult` 解析服务配置，
+并将 json 转换为 结构体 `serviceconfig.ParseResult`，故在此获取了获取负载均衡的配置，
 
-&emsp;&emsp;然后通过 `func ParseConfig(cfg json.RawMessage) (serviceconfig.LoadBalancingConfig, error)` 处，处理解析后的 json 配置，并通过负载均衡器的选择器所注册的名字，获取 **balancer.Builder**；
+&emsp;&emsp;然后通过 `func ParseConfig(cfg json.RawMessage) (serviceconfig.LoadBalancingConfig, error)` 处，
+处理解析后的 json 配置，并通过负载均衡器的选择器所注册的名字，获取 **balancer.Builder**；
 
 &emsp;&emsp;并将 **Builder** 存入 **lbConfig** 内的 **childBuilder** 字段，
 
@@ -55,15 +60,16 @@ func init() {
 &emsp;&emsp;首先实现 `resolver.Builder` 和 `resolver.Resolver` 两个接口；
 
 `resolver.Builder`：
+
 &emsp;&emsp;使用 etcd 作为解析器，故将 scheme 设置为 etcd；
 
 &emsp;&emsp;在创建一个 Resolver 时，开启一个 goroutine 用于 List-watcher 机制，节点发生变化时，主动调用 `ResolveNow` 方法重新解析服务节点（此处就是从 etcd 中拿到服务节点消息），并且通过 **resovler.ClientConn** 的 `UpdateState` 方法通知 **ClientConn** 进行节点更新，通过 `updateResolverStateAndUnlock` 方法将 **节点列表等信息** 和 **balancer.Builder** 传入 **ccBalancerWrapper** 的 **updateClientConnState** 方法中；
 
 &emsp;&emsp;在 `balancer_wrapper.go`（ccBalancerWrapper） 中，通过 `newCCBalancerWrapper` 方法，将上文获取到的 **balancer.Builder** 传入 `gracefulswitch` 包下的 `func NewBalancer(cc balancer.ClientConn, opts balancer.BuildOptions) *Balancer`，并提取出自定义的 **balancer.Balancer**，放入 **ccBalancerWrapper** 结构体中的 `balancer *gracefulswitch.Balancer`；
 
-&emsp;&emsp;当 `updateClientConnState` 被 gRPC 调用**推送更新节点信息**到负载均衡器后，**调用自定义的 balancer 的 UpdateClientConnState 方法**；
+&emsp;&emsp;当 `updateClientConnState` 被 gRPC 调用**推送更新节点信息**到负载均衡器后，**调用自定义的 balancer 的 UpdateClientConnState 方法**，完成传递；
 
-&emsp;&emsp;后面自定义的 balancer 部分尚未完成，暂时搁置放入 todo 了，核心就是维护连接及连接池，并将两方（picker、ClientConn）的数据进行交互和通知；
+&emsp;&emsp;至此，后面自定义的 balancer 部分，核心就是维护连接及连接池，并将两方（picker、ClientConn）的数据进行交互和通知；
 
 # 项目实践 & 前提条件准备
 &emsp;&emsp;背景：（gRPC 自定义实现 **resolver** 和 **balancer**）通过 **resolver** 的 **Builder** 的 `build` 方法返回 **resolver** 时，使用 etcd 的 `watch` 机制监控服务节点的 **metadata** 的变化（即 及时获取负载情况），当 **etcdResolver** （实现 **resovler** 的结构体）接收到变更事件后，通过 **attributes** 传递 **metadata**，每次必须调用 **UpdateState** 才能将 **attributes** 传递更新到 **PickerBuilder** 的 `build` 方法中，以此更新 **picker** 的数据从而改变负载均衡策略，
@@ -71,7 +77,8 @@ func init() {
 &emsp;&emsp;**目标**：使服务节点将自己的负载情况，更新/通知给 **picker** 进行负载均衡策略的判断；
 
 思考后得出 4 种方案：
-1. 如背景所提及的，使用代理（etcd）获取服务节点信息，最后传递到 **balancer.Balancer** 上改变连接状态，但是**最重要的问题**是，grpc 在传递 **attributes** 的过程中，gRPC 会将 **metadata** 的改变视为连接的改变（即使 addr 没有变化），会断开当前连接并重新建立（具体信息判断如下）导致性能的不必要开销；
+
+（1） 如背景所提及的，使用代理（etcd）获取服务节点信息，最后传递到 **balancer.Balancer** 上改变连接状态，但是**最重要的问题**是，grpc 在传递 **attributes** 的过程中，gRPC 会将 **metadata** 的改变视为连接的改变（即使 addr 没有变化），会断开当前连接并重新建立（具体信息判断如下）导致性能的不必要开销；
    
 &emsp;&emsp;根据源码可看出，**baseBalancer**（**balancer.Balancer** 的实现者，可被替换）是通过 a 这个整体（**Address**）判断连接是否变化的，导致只是 metadata 变化，但 addr 没有变化的前提下，依然会将其判断为连接更新，即**重复建立连接**；
 
@@ -111,13 +118,14 @@ for _, a := range b.subConns.Keys() {
 }
 ```
 
-&emsp;&emsp;利用 `netstat -a -n -o | findstr :9205` 可发现连接被重复建立了，具体来说，客户端主动断开和服务节点的联系后，重新建立一次新连接：
+&emsp;&emsp;利用 `netstat -a -n -o | findstr :9205` 可确定连接被重复建立了，具体来说，客户端主动断开和服务节点的联系后，重新建立一次新连接：
 
 > - -a：显示所有连接和侦听端口
 > - -n：以数字形式显示地址和端口号（不解析为主机名）
 > - -o：显示每个连接的PID
 
 > 注真实ip替换为了 10.0.0.1；
+
 ```powershell
 1） 
 TCP 10.0.0.1:12345 10.0.0.1:54321 ESTABLISHED 5616
@@ -131,20 +139,35 @@ TCP 10.0.0.1:12345 10.0.0.1:56789 ESTABLISHED 5616
 TCP 10.0.0.1:54321 10.0.0.1:12345 TIME_WAIT 0
 TCP 10.0.0.1:56789 10.0.0.1:12345 ESTABLISHED 31500
 ```
+
 ```go
 // 重新建立连接：
 conn, err := dial(connectCtx, opts.Dialer, addr, opts.UseProxy, opts.UserAgent)
 ```
-&emsp;&emsp;由此可见这个方案有比较大的性能不必要开销，不建议使用；
+&emsp;&emsp;由此可见这个方案有比较大的 性能方面的 不必要开销，不建议使用；
 
-2. 第二种方法就是在第一种的基础上，将 gRPC 原本 **balancer.Balancer** 的实现者 **baseBalancer** 替换为自定义的实现，换句话说核心是替换掉 `UpdateClientConnState` 方法（或者利用装饰器重写），在收到服务节点变化的时候，会以 **addr** 作为更新节点连接的判断依据，并且保留通知 **picker** （即重新build）等其他重要逻辑；
-3. 基于 **ORCA** （Open Request Cost Aggregation）开放标准，实现服务端的指标反馈架构；
-4. 
+（2） 第二种方法就是在第一种的基础上，将 gRPC 原本 **balancer.Balancer** 的实现者 **baseBalancer** 替换为自定义的实现，换句话说核心是替换掉 `UpdateClientConnState` 方法（或者利用装饰器重写），在收到服务节点变化的时候，会以 **addr** 作为更新节点连接的判断依据，并且保留通知 **picker** （即重新 build）等其他重要逻辑；
+
+（3） 基于 **ORCA** （Open Request Cost Aggregation）开放标准，实现服务端的指标反馈架构；
+
 gRPC 提供了两种指标上报机制（当然也可以自定义）：
 
-1、按照 **请求** 的粒度上报：当 rpc 完成后，服务端后将自定义的指标附加到尾部元数据中（适合一元请求）；
+&emsp;&emsp;1、按照 **请求** 的粒度上报：当 rpc 完成后，服务端后将自定义的指标附加到尾部元数据中（适合一元请求）；
 
-2、**带外指标**上报（Out-of-band metrics reporting）：服务端会周期性向客户端推送服务端的指标数据（如CPU，内存利用率、qps等）
+&emsp;&emsp;2、**带外指标**上报（Out-of-band metrics reporting）：服务端会周期性向客户端推送服务端的指标数据（如CPU，内存利用率、qps等）
+
+利用率指标（utilization）：包含资源使用程度，如CPU、内存、网络带宽、磁盘IO等；（高qps场景有用）
+
+请求成本指标（request cost）：对于单个请求或事务在系统消耗的资源量进行评估，
+如：请求处理时间、请求大小、数据库查询等方面的成本；
+
+&emsp;&emsp;需要注意，对于 OOB 模式，仅支持利用率指标，不支持请求成本指标，对于请求粒度的上报则支持这两者；
+
+&emsp;&emsp;也易于理解，因为如果让 OOB 也支持 `request cost metrics reporting`时，
+首先就面临识别请求对应客户端的问题，因为 OOB 通信和常规的请求路径是分离的，不能直接匹配，
+服务端必须维护客户端及其请求上下文，这将大幅提升出错和性能损耗的可能性；并且高并发情况下，
+服务端返回的数据的顺序可能不一样（同样因为路径是分离的），导致 LB 策略存在抖动的隐患；
+
 详见：
 [orca package - google.golang.org/grpc/orca - Go Packages](https://pkg.go.dev/google.golang.org/grpc/orca)
 
@@ -152,11 +175,11 @@ gRPC 提供了两种指标上报机制（当然也可以自定义）：
 
 两种机制的使用案例：[grpc-go/examples/features/orca at master · grpc/grpc-go](https://github.com/grpc/grpc-go/tree/master/examples/features/orca)
 
-4. 比较无脑，单纯在所有 rpc 响应的字段中，添加服务器的负载信息，但这种做法很麻烦，每次新的 rpc 都需要加上这个字段，不推荐；
+（4） 比较无脑，单纯在所有 rpc 响应的字段中，添加服务器的负载信息，但这种做法很麻烦，每次新的 rpc 都需要加上这个字段，不推荐；
 
 # 负载均衡算法的选型调研 思考
 
-&emsp;&emsp;在解决完实现原理层面的问题，就剩下选择器，即负载均衡的具体策略了，这方面 大致 的讨论可见[LB](https://acceleratorssr.github.io/2024/08/19/LB.html)；
+&emsp;&emsp;在解决完实现原理层面的问题，就剩下选择器，即负载均衡的具体策略了，这方面 大致 的讨论可见 [LB](https://acceleratorssr.github.io/2024/08/19/LB.html)；
 
 ## 轮询等静态无状态LB算法
 
@@ -165,12 +188,15 @@ gRPC 提供了两种指标上报机制（当然也可以自定义）：
 &emsp;&emsp;但在实际业务中，或者说在分布式数据系统无共享架构的环境下，如服务节点是**有状态**的，或者**复制滞后问题**较为严重时，如果继续使用轮询等无状态LB算法，那么性能大概率会惨不忍睹；
 
 > 注：这里限制服务节点的有状态为：仅允许本地缓存，不引入二级缓存，如 redis；
+> 
 > 且设定服务**处理过程**的特征是：高内存占用、CPU密集型（设定单纯为了突出问题的严重，其他像 session 等的处理其实也类似，都可以引入 共享二级缓存 解决）；
 
 &emsp;&emsp;首先讨论节点**有状态**时，如在线视频中，当第一个用户请求新视频时，服务端会将该视频的片段索引化，即通过计算视频的关键帧等相关数据，以便在后续用户请求该视频时快速返回用于预期的视频片段，并将索引放入本地缓存以供其他用户使用，在这种情况下，如果用户连续的请求被分发到不同服务器上，那么每个服务器都需要独立建立相同视频的索引及重复缓存视频片段，造成冗余计算和资源浪费，结果上看缓存命中率下降，请求响应速度下降；
 
 **核心的特征**是：
 - 节点间各自**独立**维护缓存等状态信息；
+
+<br>
 
 &emsp;&emsp;再讨论**复制滞后问题**，首先明确这个概念的定义：
 
