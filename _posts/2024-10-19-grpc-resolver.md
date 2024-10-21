@@ -1,6 +1,6 @@
 ---
 layout: post
-title: 基于grpc的服务发现及相关核心组件、交互分析
+title: 基于 gRPC 的服务发现及相关核心组件、交互分析
 tags: 源码相关
 excerpt: resovler.Resolver ...
 stickie: true

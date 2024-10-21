@@ -1,6 +1,6 @@
 ---
 layout: post
-title: grpc 插件式自定义 Resolver & Balancer
+title: gRPC 插件式自定义 Resolver & Balancer
 tags: 项目核心思考
 excerpt: 关于在项目中的实际应用过程及相关问题，侧重于 LB 方面；
 stickie: true
@@ -51,7 +51,7 @@ func init() {
 #### 选择器的自定义实现
 &emsp;&emsp;因为选择器只需要关注负载均衡策略的实现即可，实现 `PickerBuilder` 和 `Picker` 接口即可，`build` 方法会更新节点信息，并通知到 Picker，所以这里不用维护过多非业务逻辑相关的元数据；
 
-&emsp;&emsp;picker 和 resolver 的初始化都是在 NewClient 方法内完成的，较为直接，因为他两直接维护在 ClientConn 结构体中，以接口的形式，故不展开了；
+&emsp;&emsp;picker 和 resolver 的初始化都是在 NewClient 方法内完成的，较为直接，因为他两以 接口类型 直接维护在 ClientConn 结构体中，故不展开了；
 
 ### resolver.Resolver
 
@@ -69,7 +69,7 @@ func init() {
 
 &emsp;&emsp;当 `updateClientConnState` 被 gRPC 调用**推送更新节点信息**到负载均衡器后，**调用自定义的 balancer 的 UpdateClientConnState 方法**，完成传递；
 
-&emsp;&emsp;至此，后面自定义的 balancer 部分，核心就是维护连接及连接池，并将两方（picker、ClientConn）的数据进行交互和通知；
+&emsp;&emsp;至此，后面可以是自定义的 balancer 部分（原实现是 baseBalancer），核心就是维护连接及连接池，并将两方（picker、ClientConn）的数据进行交互和通知；
 
 # 项目实践 & 前提条件准备
 &emsp;&emsp;背景：（gRPC 自定义实现 **resolver** 和 **balancer**）通过 **resolver** 的 **Builder** 的 `build` 方法返回 **resolver** 时，使用 etcd 的 `watch` 机制监控服务节点的 **metadata** 的变化（即 及时获取负载情况），当 **etcdResolver** （实现 **resovler** 的结构体）接收到变更事件后，通过 **attributes** 传递 **metadata**，每次必须调用 **UpdateState** 才能将 **attributes** 传递更新到 **PickerBuilder** 的 `build` 方法中，以此更新 **picker** 的数据从而改变负载均衡策略，
@@ -120,11 +120,11 @@ for _, a := range b.subConns.Keys() {
 
 &emsp;&emsp;利用 `netstat -a -n -o | findstr :9205` 可确定连接被重复建立了，具体来说，客户端主动断开和服务节点的联系后，重新建立一次新连接：
 
-> - -a：显示所有连接和侦听端口
-> - -n：以数字形式显示地址和端口号（不解析为主机名）
-> - -o：显示每个连接的PID
+> - windows：-a：显示所有连接和侦听端口；-n：以数字形式显示地址和端口号；-o：显示每个连接的PID
+>
+> - linux：`netstat -tln | grep :920`5 或者 `ss -tuln | grep :9205`
 
-> 注真实ip替换为了 10.0.0.1；
+> 注：ip替换为 10.0.0.1；
 
 ```powershell
 1） 
