@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Consistent Hashing with Bounded Loads
-tags: 技术沉淀
+tags: 分布式
 excerpt: 有界一致性哈希
 ---
 
