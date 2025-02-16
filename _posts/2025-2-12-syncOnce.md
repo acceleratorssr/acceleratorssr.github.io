@@ -1,6 +1,6 @@
 ---
 layout: post
-title: sync.Map
+title: sync.Once
 tags: 源码相关
 excerpt: 使用 & 理解代码
 ---
