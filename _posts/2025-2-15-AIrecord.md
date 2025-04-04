@@ -55,7 +55,7 @@ excerpt: 记录积累
 
 &emsp;&emsp;&emsp;&emsp;如：词汇表["a", "b", "c"]，文档是"a c a”，那么此时文档向量化后的结果是 [2, 0, 1]；
 
-&emsp;&emsp;3、TF-IDF：增强版的词袋模型，考虑术语频率的基础上，还会考虑逆文档频率（IDF，Inverse Document Fequecy)，即词在整个语料库中出现的频率；（结论：降低常见词的权重，相对提高那些特定文档中频繁但在整个语料库中少见的词的权重）
+&emsp;&emsp;3、TF-IDF：增强版的词袋模型，考虑术语频率的基础上，还会考虑逆文档频率（IDF，Inverse Document Fequecy），即词在整个语料库中出现的频率；（结论：降低常见词的权重，相对提高那些特定文档中频繁但在整个语料库中少见的词的权重）
 
 &emsp;&emsp;&emsp;&emsp;`TF-IDF(t, d)= TF(t, d) * IDF(t)`
 
